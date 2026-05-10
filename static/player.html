@@ -3,51 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>PIXEL PLAYER</title>
+<title>DNO PLAYER</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
 
   :root {
-    --bg: #0a0a0f;
-    --bg2: #12121a;
-    --bg3: #1a1a28;
-    --accent: #00ff88;
-    --accent2: #ff00aa;
-    --accent3: #00aaff;
-    --text: #e0e0e0;
-    --muted: #555570;
-    --border: #2a2a40;
-    --px: 2px;
+    --bg: #0a0a0f; --bg2: #12121a; --bg3: #1a1a28;
+    --accent: #00ff88; --accent2: #ff00aa; --accent3: #00aaff;
+    --text: #e0e0e0; --muted: #555570; --border: #2a2a40; --px: 2px;
   }
 
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Press Start 2P', monospace;
-    min-height: 100vh;
-    padding: 12px 12px 24px;
-    background-image:
-      linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);
-    background-size: 32px 32px;
-    overflow-x: hidden;
+    background:var(--bg); color:var(--text); font-family:'Press Start 2P',monospace;
+    min-height:100vh; padding:12px 12px 24px;
+    background-image: linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);
+    background-size:32px 32px; overflow-x:hidden;
   }
 
-  .pixel-box {
-    background: var(--bg2);
-    border: var(--px) solid var(--accent);
-    box-shadow: 0 0 0 var(--px) var(--bg), 0 0 0 calc(var(--px)*2) var(--accent), 0 0 20px rgba(0,255,136,.12);
-    margin-bottom: 10px;
+  .pixel-box { background:var(--bg2); border:var(--px) solid var(--accent); box-shadow:0 0 0 var(--px) var(--bg),0 0 0 calc(var(--px)*2) var(--accent),0 0 20px rgba(0,255,136,.12); margin-bottom:10px; }
+
+  /* ── UNLOCK ── */
+  #unlock-screen { display:none; position:fixed; inset:0; background:rgba(10,10,15,.97); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:20px; text-align:center; padding:24px; }
+  #unlock-screen.visible { display:flex; }
+  .unlock-title { font-size:9px; color:var(--accent); letter-spacing:2px; line-height:1.8; }
+  .unlock-sub   { font-family:'VT323'; font-size:16px; color:var(--muted); }
+  .unlock-btn   { font-family:'Press Start 2P'; font-size:9px; background:var(--accent); color:var(--bg); border:none; padding:14px 24px; cursor:pointer; box-shadow:4px 4px 0 var(--accent2); touch-action:manipulation; user-select:none; animation:glow 1.5s infinite alternate; }
+  @keyframes glow{from{box-shadow:4px 4px 0 var(--accent2)}to{box-shadow:4px 4px 16px var(--accent2),0 0 20px var(--accent)}}
+  .unlock-btn:active { transform:translate(4px,4px); box-shadow:none; }
+
+  /* ── SIDEBAR MENU ── */
+  #sidebar {
+    position:fixed; top:0; left:-260px; width:260px; height:100vh;
+    background:var(--bg2); border-right:var(--px) solid var(--accent);
+    box-shadow:4px 0 20px rgba(0,255,136,.15);
+    z-index:150; transition:left .25s cubic-bezier(.4,0,.2,1);
+    display:flex; flex-direction:column;
   }
+  #sidebar.open { left:0; }
+  #sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:140; }
+  #sidebar-overlay.visible { display:block; }
+
+  .sidebar-header { padding:16px 14px 12px; border-bottom:var(--px) solid var(--border); }
+  .sidebar-logo   { font-size:8px; color:var(--accent); letter-spacing:2px; text-shadow:0 0 8px var(--accent),2px 2px 0 var(--accent2); }
+  .sidebar-sub    { font-family:'VT323'; font-size:12px; color:var(--muted); margin-top:3px; }
+
+  .sidebar-nav { flex:1; padding:10px 0; overflow-y:auto; }
+  .nav-item {
+    display:flex; align-items:center; gap:12px;
+    padding:12px 16px; cursor:pointer; font-size:7px; letter-spacing:1px;
+    color:var(--muted); border-left:3px solid transparent;
+    touch-action:manipulation; user-select:none; transition:all .15s;
+  }
+  .nav-item:active, .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,255,136,.05); }
+  .nav-item .nav-icon { font-size:14px; width:20px; text-align:center; }
+  .nav-item.fav-tab .nav-icon { color:var(--accent2); }
+  .nav-item.fav-tab.active { color:var(--accent2); border-left-color:var(--accent2); background:rgba(255,0,170,.05); }
+
+  .sidebar-footer { padding:12px 16px; border-top:var(--px) solid var(--border); font-family:'VT323'; font-size:12px; color:var(--muted); }
 
   /* ── HEADER ── */
-  .header { text-align:center; margin-bottom:12px; padding-top:4px; }
+  .header { display:flex; align-items:center; gap:10px; margin-bottom:12px; padding-top:4px; position:relative; }
+  .burger-btn {
+    background:none; border:var(--px) solid var(--border); color:var(--accent);
+    width:34px; height:34px; cursor:pointer; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:4px; flex-shrink:0;
+    touch-action:manipulation; user-select:none;
+  }
+  .burger-btn:active { border-color:var(--accent); background:rgba(0,255,136,.1); }
+  .burger-line { width:14px; height:2px; background:var(--accent); display:block; }
+  .header-center { flex:1; text-align:center; }
   .logo { font-size:10px; color:var(--accent); letter-spacing:3px; text-shadow:0 0 10px var(--accent),2px 2px 0 var(--accent2); animation:flicker 4s infinite; }
-  .sub  { font-family:'VT323'; font-size:13px; color:var(--muted); margin-top:3px; letter-spacing:2px; }
+  .sub  { font-family:'VT323'; font-size:12px; color:var(--muted); margin-top:2px; letter-spacing:2px; }
   @keyframes flicker{0%,95%,100%{opacity:1}96%{opacity:.6}97%{opacity:1}98%{opacity:.4}}
+  .header-spacer { width:34px; flex-shrink:0; } /* балансирует бургер слева */
+
+  /* ── PAGES ── */
+  .page { display:none; }
+  .page.active { display:block; }
 
   /* ── INPUTS ── */
   .sec-label { font-size:6px; color:var(--accent3); display:block; margin-bottom:7px; letter-spacing:1px; }
@@ -62,51 +97,15 @@
   .px-btn.p2 { color:var(--accent2); border-color:var(--accent2); box-shadow:2px 2px 0 var(--accent2); }
   .px-btn.p2:active { background:var(--accent2); color:var(--bg); box-shadow:none; }
 
-  /* ── API / SEARCH ── */
   .api-section, .search-section { padding:12px; }
 
-  /* ── UNLOCK SCREEN (показывается до первого касания) ── */
-  #unlock-screen {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(10,10,15,.97);
-    z-index: 100;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    text-align: center;
-    padding: 24px;
-  }
-  #unlock-screen.visible { display:flex; }
-  .unlock-title { font-size:9px; color:var(--accent); letter-spacing:2px; line-height:1.8; }
-  .unlock-sub   { font-family:'VT323'; font-size:16px; color:var(--muted); }
-  .unlock-btn {
-    font-family:'Press Start 2P'; font-size:9px;
-    background:var(--accent); color:var(--bg);
-    border:none; padding:14px 24px; cursor:pointer;
-    box-shadow:4px 4px 0 var(--accent2);
-    touch-action:manipulation; user-select:none;
-    animation: glow 1.5s infinite alternate;
-  }
-  @keyframes glow { from{box-shadow:4px 4px 0 var(--accent2)} to{box-shadow:4px 4px 16px var(--accent2),0 0 20px var(--accent)} }
-  .unlock-btn:active { transform:translate(4px,4px); box-shadow:none; }
-
-  /* ── YOUTUBE PLAYER (видимый, встроен в дизайн) ── */
+  /* ── YT PLAYER ── */
   .yt-section { padding:0 12px 12px; display:none; }
   .yt-section.visible { display:block; }
   .yt-label { font-size:6px; color:var(--muted); letter-spacing:1px; margin-bottom:6px; display:block; }
-  .yt-frame-wrap {
-    position:relative; width:100%; padding-top:56.25%;
-    background:#000; border:var(--px) solid var(--border); overflow:hidden;
-  }
+  .yt-frame-wrap { position:relative; width:100%; padding-top:56.25%; background:#000; border:var(--px) solid var(--border); overflow:hidden; }
   .yt-frame-wrap iframe { position:absolute; top:0; left:0; width:100%; height:100%; border:none; }
-  /* пиксельный оверлей поверх видео */
-  .yt-overlay {
-    position:absolute; inset:0; pointer-events:none; z-index:1;
-    background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.1) 3px,rgba(0,0,0,.1) 4px);
-  }
+  .yt-overlay { position:absolute; inset:0; pointer-events:none; z-index:1; background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.1) 3px,rgba(0,0,0,.1) 4px); }
 
   /* ── NOW PLAYING ── */
   .now-playing { padding:12px; display:none; }
@@ -120,8 +119,8 @@
   /* ── VISUALIZER ── */
   .visualizer { height:32px; display:flex; align-items:flex-end; gap:2px; padding:0 2px; margin-bottom:10px; }
   .vbar { flex:1; background:var(--accent); min-height:3px; transition:height .1s; opacity:.75; }
-  .vbar:nth-child(even)  { background:var(--accent2); }
-  .vbar:nth-child(3n)    { background:var(--accent3); }
+  .vbar:nth-child(even) { background:var(--accent2); }
+  .vbar:nth-child(3n)   { background:var(--accent3); }
 
   /* ── PROGRESS ── */
   .progress-wrap { margin-bottom:10px; }
@@ -136,12 +135,16 @@
   .ctrl-btn:active { border-color:var(--accent); color:var(--accent); transform:translate(1px,1px); }
   .ctrl-btn.play-btn { width:42px; height:42px; border-color:var(--accent); color:var(--accent); font-size:12px; box-shadow:2px 2px 0 var(--accent); }
   .ctrl-btn.play-btn:active { background:var(--accent); color:var(--bg); box-shadow:none; }
+  /* ♥ кнопка */
+  .ctrl-btn.heart-btn { color:var(--muted); border-color:var(--border); font-size:14px; }
+  .ctrl-btn.heart-btn.liked { color:var(--accent2); border-color:var(--accent2); box-shadow:0 0 8px var(--accent2); }
+  .ctrl-btn.heart-btn:active { transform:scale(1.2) translate(1px,1px); }
   .vol-row { display:flex; align-items:center; gap:5px; flex:1; }
   .vol-icon { font-family:'Press Start 2P'; font-size:7px; color:var(--muted); flex-shrink:0; }
   input[type=range].vol-slider { flex:1; -webkit-appearance:none; height:7px; background:var(--bg3); border:var(--px) solid var(--border); outline:none; cursor:pointer; }
   input[type=range].vol-slider::-webkit-slider-thumb { -webkit-appearance:none; width:11px; height:15px; background:var(--accent); border:none; }
 
-  /* ── RESULTS ── */
+  /* ── RESULTS / FAVOURITES LIST ── */
   .results-section { padding:12px; display:none; }
   .results-section.visible { display:block; }
   .results-list { display:flex; flex-direction:column; gap:5px; max-height:240px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--accent) var(--bg3); }
@@ -152,6 +155,17 @@
   .result-title   { font-family:'VT323'; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
   .result-channel { font-family:'VT323'; font-size:11px; color:var(--muted); }
   .result-num     { font-size:7px; color:var(--muted); flex-shrink:0; padding:2px 5px; border:1px solid var(--border); }
+  /* кнопка удалить из избранного */
+  .fav-remove { font-size:14px; color:var(--accent2); flex-shrink:0; background:none; border:none; cursor:pointer; padding:4px; touch-action:manipulation; }
+  .fav-remove:active { transform:scale(1.3); }
+
+  /* ── FAVORITES PAGE ── */
+  #page-fav { padding:0; }
+  .fav-header { padding:12px; border-bottom:var(--px) solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .fav-title  { font-size:7px; color:var(--accent2); letter-spacing:1px; }
+  .fav-count  { font-family:'VT323'; font-size:13px; color:var(--muted); }
+  .fav-list   { display:flex; flex-direction:column; gap:5px; padding:10px; max-height:calc(100vh - 160px); overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--accent2) var(--bg3); }
+  .fav-empty  { font-family:'VT323'; font-size:16px; color:var(--muted); text-align:center; padding:40px 20px; line-height:1.6; }
 
   /* ── STATUS ── */
   .status-bar { display:flex; justify-content:space-between; align-items:center; padding:5px 10px; background:var(--bg3); border:var(--px) solid var(--border); margin-top:8px; }
@@ -167,82 +181,126 @@
 </head>
 <body>
 
-<!-- ── UNLOCK SCREEN (нужен для userActivation в Telegram) ── -->
+<!-- ── UNLOCK ── -->
 <div id="unlock-screen">
-  <div class="unlock-title">◆ PIXEL PLAYER ◆</div>
+  <div class="unlock-title">◆ DNO PLAYER ◆</div>
   <div class="unlock-sub">Нажми чтобы включить звук</div>
   <button class="unlock-btn" id="unlock-btn">▶ ЗАПУСТИТЬ</button>
 </div>
 
+<!-- ── SIDEBAR ── -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">◆ DNO PLAYER</div>
+    <div class="sidebar-sub">&gt; YOUTUBE EDITION</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-item active" id="nav-player" onclick="showPage('player')">
+      <span class="nav-icon">▶</span> ПЛЕЕР
+    </div>
+    <div class="nav-item fav-tab" id="nav-fav" onclick="showPage('fav')">
+      <span class="nav-icon">♥</span> ИЗБРАННОЕ
+    </div>
+  </nav>
+  <div class="sidebar-footer">DNO PLAYER v1.0</div>
+</div>
+
 <!-- ── HEADER ── -->
 <div class="header">
-  <div class="logo">◆ PIXEL PLAYER ◆</div>
-  <div class="sub">&gt; YOUTUBE EDITION &lt;</div>
-</div>
-
-<!-- ── API KEY ── -->
-<div class="pixel-box api-section">
-  <span class="sec-label">▸ YOUTUBE API KEY</span>
-  <div class="row">
-    <input class="pixel-input" type="password" id="api-key" placeholder="AIza...">
-    <button class="px-btn" onclick="saveKey()">SAVE</button>
+  <button class="burger-btn" onclick="openSidebar()">
+    <span class="burger-line"></span>
+    <span class="burger-line"></span>
+    <span class="burger-line"></span>
+  </button>
+  <div class="header-center">
+    <div class="logo">◆ DNO PLAYER ◆</div>
+    <div class="sub">&gt; YOUTUBE EDITION &lt;</div>
   </div>
+  <div class="header-spacer"></div>
 </div>
 
-<!-- ── SEARCH ── -->
-<div class="pixel-box search-section">
-  <span class="sec-label">▸ SEARCH TRACKS</span>
-  <div class="row">
-    <input class="pixel-input" type="text" id="search-q" placeholder="artist / track...">
-    <button class="px-btn p2" onclick="doSearch()">FIND</button>
-  </div>
-</div>
+<!-- ══════════ PAGE: PLAYER ══════════ -->
+<div class="page active" id="page-player">
 
-<!-- ── YOUTUBE PLAYER (видимый iframe, встроен в дизайн) ── -->
-<div class="pixel-box yt-section" id="yt-section">
-  <span class="yt-label">▸ VIDEO FEED</span>
-  <div class="yt-frame-wrap">
-    <div id="yt-player"></div>
-    <div class="yt-overlay"></div>
-  </div>
-</div>
-
-<!-- ── NOW PLAYING ── -->
-<div class="pixel-box now-playing" id="now-playing">
-  <div class="np-label">NOW PLAYING</div>
-  <div class="np-title" id="np-title">—</div>
-  <div class="np-channel" id="np-channel">—</div>
-  <div class="visualizer" id="viz"></div>
-  <div class="progress-wrap">
-    <div class="time-row">
-      <span id="cur-time">0:00</span>
-      <span id="dur-time">0:00</span>
-    </div>
-    <div class="progress-track" onclick="seek(event)">
-      <div class="progress-fill" id="prog-fill"></div>
+  <!-- API KEY -->
+  <div class="pixel-box api-section">
+    <span class="sec-label">▸ YOUTUBE API KEY</span>
+    <div class="row">
+      <input class="pixel-input" type="password" id="api-key" placeholder="AIza...">
+      <button class="px-btn" onclick="saveKey()">SAVE</button>
     </div>
   </div>
-  <div class="controls">
-    <button class="ctrl-btn" onclick="prevTrack()">◀◀</button>
-    <button class="ctrl-btn play-btn" id="play-btn" onclick="togglePlay()">▶</button>
-    <button class="ctrl-btn" onclick="nextTrack()">▶▶</button>
-    <div class="vol-row">
-      <span class="vol-icon">♪</span>
-      <input type="range" class="vol-slider" id="vol" min="0" max="100" value="80" oninput="setVol(this.value)">
+
+  <!-- SEARCH -->
+  <div class="pixel-box search-section">
+    <span class="sec-label">▸ SEARCH TRACKS</span>
+    <div class="row">
+      <input class="pixel-input" type="text" id="search-q" placeholder="artist / track...">
+      <button class="px-btn p2" onclick="doSearch()">FIND</button>
     </div>
   </div>
-</div>
 
-<!-- ── RESULTS ── -->
-<div class="pixel-box results-section" id="results-section">
-  <span class="sec-label">▸ RESULTS</span>
-  <div class="results-list" id="results-list"></div>
-</div>
+  <!-- YT PLAYER -->
+  <div class="pixel-box yt-section" id="yt-section">
+    <span class="yt-label">▸ VIDEO FEED</span>
+    <div class="yt-frame-wrap">
+      <div id="yt-player"></div>
+      <div class="yt-overlay"></div>
+    </div>
+  </div>
 
-<!-- ── STATUS ── -->
-<div class="status-bar">
-  <span class="status-text" id="status-text">READY &gt; ENTER API KEY &amp; SEARCH</span>
-  <div class="status-dot" id="status-dot"></div>
+  <!-- NOW PLAYING -->
+  <div class="pixel-box now-playing" id="now-playing">
+    <div class="np-label">NOW PLAYING</div>
+    <div class="np-title" id="np-title">—</div>
+    <div class="np-channel" id="np-channel">—</div>
+    <div class="visualizer" id="viz"></div>
+    <div class="progress-wrap">
+      <div class="time-row">
+        <span id="cur-time">0:00</span>
+        <span id="dur-time">0:00</span>
+      </div>
+      <div class="progress-track" onclick="seek(event)">
+        <div class="progress-fill" id="prog-fill"></div>
+      </div>
+    </div>
+    <!-- CONTROLS: prev | play | next | ♥ | volume -->
+    <div class="controls">
+      <button class="ctrl-btn" onclick="prevTrack()">◀◀</button>
+      <button class="ctrl-btn play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+      <button class="ctrl-btn" onclick="nextTrack()">▶▶</button>
+      <button class="ctrl-btn heart-btn" id="heart-btn" onclick="toggleFav()" title="В избранное">♡</button>
+      <div class="vol-row">
+        <span class="vol-icon">♪</span>
+        <input type="range" class="vol-slider" id="vol" min="0" max="100" value="80" oninput="setVol(this.value)">
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="pixel-box results-section" id="results-section">
+    <span class="sec-label">▸ RESULTS</span>
+    <div class="results-list" id="results-list"></div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <span class="status-text" id="status-text">READY &gt; ENTER API KEY &amp; SEARCH</span>
+    <div class="status-dot" id="status-dot"></div>
+  </div>
+
+</div><!-- /page-player -->
+
+<!-- ══════════ PAGE: FAVORITES ══════════ -->
+<div class="page" id="page-fav">
+  <div class="pixel-box" style="padding:0;">
+    <div class="fav-header">
+      <span class="fav-title">♥ ИЗБРАННОЕ</span>
+      <span class="fav-count" id="fav-count">0 треков</span>
+    </div>
+    <div class="fav-list" id="fav-list"></div>
+  </div>
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
@@ -252,63 +310,61 @@ const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0a0f'); tg.setBackgroundColor('#0a0a0f'); }
 
 // ── STATE ──
-let apiKey      = localStorage.getItem('yt_api_key') || '';
-let player      = null;
-let ytReady     = false;
-let unlocked    = false;
-let tracks      = [];
-let currentIdx  = -1;
-let isPlaying   = false;
-let pendingIdx  = null;
-let progressInterval = null;
-let vizInterval      = null;
-const vizBars        = [];
+let apiKey     = localStorage.getItem('yt_api_key') || '';
+let player     = null, ytReady = false, unlocked = false;
+let tracks     = [], currentIdx = -1, isPlaying = false, pendingIdx = null;
+let progressInterval = null, vizInterval = null;
+const vizBars  = [];
 
-// ── UNLOCK (userActivation trigger) ──
-// Telegram WebView блокирует autoplay без явного user gesture.
-// Показываем оверлей — пользователь нажимает кнопку → получаем userActivation.
+// ── FAVORITES (localStorage) ──
+function loadFavs()       { try { return JSON.parse(localStorage.getItem('dno_favs')||'[]'); } catch{ return []; } }
+function saveFavs(favs)   { localStorage.setItem('dno_favs', JSON.stringify(favs)); }
+function isFav(id)        { return loadFavs().some(f => f.id === id); }
+function addFav(track)    { const f=loadFavs(); if(!f.some(x=>x.id===track.id)){ f.unshift(track); saveFavs(f); } }
+function removeFav(id)    { saveFavs(loadFavs().filter(f=>f.id!==id)); }
+
+// ── SIDEBAR ──
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('visible');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('visible');
+}
+
+// ── PAGES ──
+function showPage(name) {
+  closeSidebar();
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'fav') renderFavs();
+}
+
+// ── UNLOCK ──
 const unlockScreen = document.getElementById('unlock-screen');
-const unlockBtn    = document.getElementById('unlock-btn');
+if (tg) unlockScreen.classList.add('visible'); else unlocked = true;
 
-// Показываем unlock только внутри Telegram
-if (tg) unlockScreen.classList.add('visible');
-else    unlocked = true; // в браузере сразу разрешено
-
-unlockBtn.addEventListener('click', () => {
+document.getElementById('unlock-btn').addEventListener('click', () => {
   unlocked = true;
   unlockScreen.classList.remove('visible');
-
-  // Инициализируем плеер сразу после gesture — браузер запомнит разрешение
   if (ytReady && player && typeof player.playVideo === 'function') {
-    // Тихий старт-стоп чтобы разблокировать аудиоконтекст
-    player.mute();
-    player.playVideo();
+    player.mute(); player.playVideo();
     setTimeout(() => { player.stopVideo(); player.unMute(); setVol(document.getElementById('vol').value); }, 300);
   }
-
-  // Если трек уже ждал — запускаем
-  if (pendingIdx !== null) {
-    const idx = pendingIdx; pendingIdx = null;
-    playTrack(idx);
-  }
+  if (pendingIdx !== null) { const i=pendingIdx; pendingIdx=null; playTrack(i); }
 }, { once: true });
 
 // ── INIT ──
-if (apiKey) {
-  document.getElementById('api-key').value = apiKey;
-  setStatus('API KEY LOADED. READY TO SEARCH.');
-}
+if (apiKey) { document.getElementById('api-key').value = apiKey; setStatus('API KEY LOADED. READY TO SEARCH.'); }
 
-// Visualizer bars
 const vizEl = document.getElementById('viz');
-for (let i = 0; i < 20; i++) {
-  const b = document.createElement('div');
-  b.className = 'vbar'; b.style.height = '3px';
-  vizEl.appendChild(b); vizBars.push(b);
-}
+for (let i=0;i<20;i++) { const b=document.createElement('div'); b.className='vbar'; b.style.height='3px'; vizEl.appendChild(b); vizBars.push(b); }
 
-document.getElementById('search-q').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
-document.getElementById('api-key').addEventListener('keydown', e => { if(e.key==='Enter') saveKey(); });
+document.getElementById('search-q').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+document.getElementById('api-key').addEventListener('keydown',  e=>{ if(e.key==='Enter') saveKey();  });
 
 // ── API KEY ──
 function saveKey() {
@@ -323,17 +379,16 @@ async function doSearch() {
   if (!apiKey) { setStatus('ERROR: SET API KEY FIRST'); return; }
   const q = document.getElementById('search-q').value.trim();
   if (!q)      { setStatus('ERROR: ENTER SEARCH QUERY'); return; }
-  setStatus('SEARCHING...');
-  dot(true);
+  setStatus('SEARCHING...'); dot(true);
   try {
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=15&key=${apiKey}`;
-    const data = await fetch(url).then(r => r.json());
+    const data = await fetch(url).then(r=>r.json());
     if (data.error) { setStatus('API ERROR: '+(data.error.message||'').substring(0,35)); dot(false); return; }
-    tracks = (data.items||[]).map(item => ({
+    tracks = (data.items||[]).map(item=>({
       id:      item.id.videoId,
       title:   item.snippet.title,
       channel: item.snippet.channelTitle,
-      thumb:   item.snippet.thumbnails?.medium?.url || ''
+      thumb:   item.snippet.thumbnails?.medium?.url||''
     }));
     renderResults();
     setStatus(`FOUND ${tracks.length} TRACKS`);
@@ -341,14 +396,14 @@ async function doSearch() {
   dot(false);
 }
 
-// ── RESULTS ──
+// ── RENDER SEARCH RESULTS ──
 function renderResults() {
   document.getElementById('results-section').classList.add('visible');
   const list = document.getElementById('results-list');
   list.innerHTML = '';
   tracks.forEach((t,i) => {
     const el = document.createElement('div');
-    el.className = 'result-item' + (i===currentIdx?' active':'');
+    el.className = 'result-item'+(i===currentIdx?' active':'');
     el.innerHTML = `
       <span class="result-num">${String(i+1).padStart(2,'0')}</span>
       <img class="result-thumb" src="${t.thumb}" onerror="this.style.display='none'" alt="">
@@ -357,87 +412,135 @@ function renderResults() {
         <div class="result-channel">${esc(t.channel)}</div>
       </div>`;
     el.onclick = () => {
-      // Если ещё не разблокировано — показываем unlock и запоминаем трек
-      if (!unlocked) { pendingIdx = i; unlockScreen.classList.add('visible'); return; }
+      if (!unlocked) { pendingIdx=i; unlockScreen.classList.add('visible'); return; }
       playTrack(i);
     };
     list.appendChild(el);
   });
 }
 
-function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// ── RENDER FAVORITES ──
+function renderFavs() {
+  const favs  = loadFavs();
+  const list  = document.getElementById('fav-list');
+  const count = document.getElementById('fav-count');
+  count.textContent = favs.length + (favs.length===1?' трек':favs.length>=2&&favs.length<=4?' трека':' треков');
+  list.innerHTML = '';
+  if (!favs.length) {
+    list.innerHTML = '<div class="fav-empty">Пока пусто...<br>Нажми ♡ рядом с плеером<br>чтобы добавить трек</div>';
+    return;
+  }
+  favs.forEach((t,i) => {
+    const el = document.createElement('div');
+    el.className = 'result-item';
+    el.innerHTML = `
+      <span class="result-num">${String(i+1).padStart(2,'0')}</span>
+      <img class="result-thumb" src="${t.thumb}" onerror="this.style.display='none'" alt="">
+      <div class="result-info">
+        <div class="result-title">${esc(t.title)}</div>
+        <div class="result-channel">${esc(t.channel)}</div>
+      </div>
+      <button class="fav-remove" title="Удалить">♥</button>`;
+    // Клик по треку — играть
+    el.querySelector('.result-info').onclick = () => {
+      // Загружаем избранный трек во временный список
+      tracks = favs; currentIdx = i;
+      showPage('player');
+      if (!unlocked) { pendingIdx=i; unlockScreen.classList.add('visible'); return; }
+      playTrack(i);
+    };
+    el.querySelector('.result-thumb').onclick = el.querySelector('.result-info').onclick;
+    // Кнопка удалить
+    el.querySelector('.fav-remove').onclick = (e) => {
+      e.stopPropagation();
+      removeFav(t.id);
+      renderFavs();
+      updateHeartBtn();
+    };
+    list.appendChild(el);
+  });
+}
+
+// ── HEART BUTTON ──
+function updateHeartBtn() {
+  const btn = document.getElementById('heart-btn');
+  if (!btn) return;
+  const t = tracks[currentIdx];
+  if (t && isFav(t.id)) {
+    btn.textContent = '♥'; btn.classList.add('liked');
+  } else {
+    btn.textContent = '♡'; btn.classList.remove('liked');
+  }
+}
+
+function toggleFav() {
+  const t = tracks[currentIdx];
+  if (!t) return;
+  if (isFav(t.id)) { removeFav(t.id); } else { addFav(t); }
+  updateHeartBtn();
+  // Маленькая анимация
+  const btn = document.getElementById('heart-btn');
+  btn.style.transform = 'scale(1.4)';
+  setTimeout(()=>btn.style.transform='', 200);
+}
 
 // ── YOUTUBE IFrame API ──
 function onYouTubeIframeAPIReady() {
   ytReady = true;
   player = new YT.Player('yt-player', {
-    width: '100%', height: '100%',
-    playerVars: { autoplay:0, controls:0, modestbranding:1, rel:0, playsinline:1, enablejsapi:1 },
-    events: { onReady: onPlayerReady, onStateChange: onPlayerState, onError: onPlayerError }
+    width:'100%', height:'100%',
+    playerVars:{ autoplay:0, controls:0, modestbranding:1, rel:0, playsinline:1, enablejsapi:1 },
+    events:{ onReady:onPlayerReady, onStateChange:onPlayerState, onError:onPlayerError }
   });
 }
-
-function onPlayerReady() {
-  setVol(document.getElementById('vol').value);
-}
+function onPlayerReady() { setVol(document.getElementById('vol').value); }
 
 function onPlayerState(e) {
-  if (e.data === YT.PlayerState.PLAYING) {
-    isPlaying = true;
-    document.getElementById('play-btn').textContent = '▐▐';
+  if (e.data===YT.PlayerState.PLAYING) {
+    isPlaying=true; document.getElementById('play-btn').textContent='▐▐';
     startProgress(); startViz(); dot(true);
-    setStatus('PLAYING: ' + (tracks[currentIdx]?.title||'').substring(0,28));
-  } else if (e.data === YT.PlayerState.PAUSED) {
-    isPlaying = false;
-    document.getElementById('play-btn').textContent = '▶';
+    setStatus('PLAYING: '+(tracks[currentIdx]?.title||'').substring(0,28));
+  } else if (e.data===YT.PlayerState.PAUSED) {
+    isPlaying=false; document.getElementById('play-btn').textContent='▶';
     stopProgress(); stopViz(); dot(false);
-  } else if (e.data === YT.PlayerState.BUFFERING) {
+  } else if (e.data===YT.PlayerState.BUFFERING) {
     setStatus('BUFFERING...');
-  } else if (e.data === YT.PlayerState.ENDED) {
-    nextTrack();
-  }
+  } else if (e.data===YT.PlayerState.ENDED) { nextTrack(); }
 }
-
 function onPlayerError(e) {
-  const msg = {2:'BAD ID',5:'HTML5 ERR',100:'NOT FOUND',101:'NO EMBED',150:'NO EMBED'}[e.data]||'ERR';
-  setStatus('SKIP: ' + msg); setTimeout(nextTrack, 1200);
+  const msg={2:'BAD ID',5:'HTML5 ERR',100:'NOT FOUND',101:'NO EMBED',150:'NO EMBED'}[e.data]||'ERR';
+  setStatus('SKIP: '+msg); setTimeout(nextTrack,1200);
 }
 
 // ── PLAY ──
 function playTrack(idx) {
-  if (idx < 0 || idx >= tracks.length) return;
-  currentIdx = idx;
-  const t = tracks[idx];
-
+  if (idx<0||idx>=tracks.length) return;
+  currentIdx=idx; const t=tracks[idx];
   document.getElementById('yt-section').classList.add('visible');
   document.getElementById('now-playing').classList.add('visible');
   document.getElementById('np-title').textContent   = t.title;
   document.getElementById('np-channel').textContent = t.channel;
-  document.querySelectorAll('.result-item').forEach((el,i) => el.classList.toggle('active', i===idx));
-
+  document.querySelectorAll('.result-item').forEach((el,i)=>el.classList.toggle('active',i===idx));
+  updateHeartBtn();
   setStatus('LOADING...');
-
-  if (!ytReady || !player || typeof player.loadVideoById !== 'function') {
-    pendingIdx = idx; setStatus('PLAYER INIT... WAIT'); return;
-  }
+  if (!ytReady||!player||typeof player.loadVideoById!=='function') { pendingIdx=idx; setStatus('PLAYER INIT... WAIT'); return; }
   player.loadVideoById(t.id);
 }
 
 function togglePlay() {
-  if (!player || typeof player.getPlayerState !== 'function') return;
-  player.getPlayerState() === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
+  if (!player||typeof player.getPlayerState!=='function') return;
+  player.getPlayerState()===YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
 }
-function prevTrack() { playTrack(currentIdx > 0 ? currentIdx-1 : tracks.length-1); }
-function nextTrack() { playTrack(currentIdx < tracks.length-1 ? currentIdx+1 : 0); }
-function setVol(v)   { if(player && player.setVolume) player.setVolume(Number(v)); }
+function prevTrack() { playTrack(currentIdx>0?currentIdx-1:tracks.length-1); }
+function nextTrack() { playTrack(currentIdx<tracks.length-1?currentIdx+1:0); }
+function setVol(v)   { if(player&&player.setVolume) player.setVolume(Number(v)); }
 
 function seek(e) {
-  if (!player || !player.getDuration) return;
-  const r = e.currentTarget.getBoundingClientRect();
-  player.seekTo(((e.clientX-r.left)/r.width)*(player.getDuration()||0), true);
+  if(!player||!player.getDuration) return;
+  const r=e.currentTarget.getBoundingClientRect();
+  player.seekTo(((e.clientX-r.left)/r.width)*(player.getDuration()||0),true);
 }
 
-// ── PROGRESS ──
 function startProgress(){ stopProgress(); progressInterval=setInterval(updateProgress,500); }
 function stopProgress() { if(progressInterval) clearInterval(progressInterval); }
 function updateProgress(){
@@ -449,11 +552,10 @@ function updateProgress(){
 }
 function fmt(s){ s=Math.floor(s); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 
-// ── VISUALIZER ──
 function startViz(){ stopViz(); vizInterval=setInterval(()=>vizBars.forEach(b=>b.style.height=(3+Math.random()*29)+'px'),130); }
 function stopViz() { if(vizInterval) clearInterval(vizInterval); vizBars.forEach(b=>b.style.height='3px'); }
 
-// ── HELPERS ──
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function dot(on){ document.getElementById('status-dot').classList.toggle('on',on); }
 function setStatus(msg){ document.getElementById('status-text').textContent=msg.toUpperCase().substring(0,50); }
 </script>
