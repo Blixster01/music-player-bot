@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PIXEL PLAYER</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #12121a;
+    --bg3: #1a1a28;
+    --accent: #00ff88;
+    --accent2: #ff00aa;
+    --accent3: #00aaff;
+    --text: #e0e0e0;
+    --muted: #555570;
+    --border: #2a2a40;
+    --px: 2px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    min-height: 100vh;
+    padding: 12px 12px 24px;
+    background-image:
+      linear-gradient(rgba(0,255,136,.03) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,255,136,.03) 1px,transparent 1px);
+    background-size: 32px 32px;
+    overflow-x: hidden;
+  }
+
+  .pixel-box {
+    background: var(--bg2);
+    border: var(--px) solid var(--accent);
+    box-shadow: 0 0 0 var(--px) var(--bg), 0 0 0 calc(var(--px)*2) var(--accent), 0 0 20px rgba(0,255,136,.12);
+    margin-bottom: 10px;
+  }
+
+  /* ── HEADER ── */
+  .header { text-align:center; margin-bottom:12px; padding-top:4px; }
+  .logo { font-size:10px; color:var(--accent); letter-spacing:3px; text-shadow:0 0 10px var(--accent),2px 2px 0 var(--accent2); animation:flicker 4s infinite; }
+  .sub  { font-family:'VT323'; font-size:13px; color:var(--muted); margin-top:3px; letter-spacing:2px; }
+  @keyframes flicker{0%,95%,100%{opacity:1}96%{opacity:.6}97%{opacity:1}98%{opacity:.4}}
+
+  /* ── INPUTS ── */
+  .sec-label { font-size:6px; color:var(--accent3); display:block; margin-bottom:7px; letter-spacing:1px; }
+  .row { display:flex; gap:7px; }
+  .pixel-input { flex:1; background:var(--bg3); border:var(--px) solid var(--border); color:var(--accent); font-family:'VT323'; font-size:15px; padding:7px 9px; outline:none; min-width:0; }
+  .pixel-input:focus { border-color:var(--accent); }
+  .pixel-input::placeholder { color:var(--muted); }
+
+  /* ── BUTTONS ── */
+  .px-btn { font-family:'Press Start 2P'; font-size:6px; background:var(--bg3); color:var(--accent); border:var(--px) solid var(--accent); padding:7px 10px; cursor:pointer; letter-spacing:1px; box-shadow:2px 2px 0 var(--accent); white-space:nowrap; touch-action:manipulation; user-select:none; }
+  .px-btn:active { transform:translate(2px,2px); box-shadow:none; background:var(--accent); color:var(--bg); }
+  .px-btn.p2 { color:var(--accent2); border-color:var(--accent2); box-shadow:2px 2px 0 var(--accent2); }
+  .px-btn.p2:active { background:var(--accent2); color:var(--bg); box-shadow:none; }
+
+  /* ── API / SEARCH ── */
+  .api-section, .search-section { padding:12px; }
+
+  /* ── UNLOCK SCREEN (показывается до первого касания) ── */
+  #unlock-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,.97);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+    padding: 24px;
+  }
+  #unlock-screen.visible { display:flex; }
+  .unlock-title { font-size:9px; color:var(--accent); letter-spacing:2px; line-height:1.8; }
+  .unlock-sub   { font-family:'VT323'; font-size:16px; color:var(--muted); }
+  .unlock-btn {
+    font-family:'Press Start 2P'; font-size:9px;
+    background:var(--accent); color:var(--bg);
+    border:none; padding:14px 24px; cursor:pointer;
+    box-shadow:4px 4px 0 var(--accent2);
+    touch-action:manipulation; user-select:none;
+    animation: glow 1.5s infinite alternate;
+  }
+  @keyframes glow { from{box-shadow:4px 4px 0 var(--accent2)} to{box-shadow:4px 4px 16px var(--accent2),0 0 20px var(--accent)} }
+  .unlock-btn:active { transform:translate(4px,4px); box-shadow:none; }
+
+  /* ── YOUTUBE PLAYER (видимый, встроен в дизайн) ── */
+  .yt-section { padding:0 12px 12px; display:none; }
+  .yt-section.visible { display:block; }
+  .yt-label { font-size:6px; color:var(--muted); letter-spacing:1px; margin-bottom:6px; display:block; }
+  .yt-frame-wrap {
+    position:relative; width:100%; padding-top:56.25%;
+    background:#000; border:var(--px) solid var(--border); overflow:hidden;
+  }
+  .yt-frame-wrap iframe { position:absolute; top:0; left:0; width:100%; height:100%; border:none; }
+  /* пиксельный оверлей поверх видео */
+  .yt-overlay {
+    position:absolute; inset:0; pointer-events:none; z-index:1;
+    background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.1) 3px,rgba(0,0,0,.1) 4px);
+  }
+
+  /* ── NOW PLAYING ── */
+  .now-playing { padding:12px; display:none; }
+  .now-playing.visible { display:block; }
+  .np-label { font-size:6px; color:var(--accent); letter-spacing:1px; margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+  .np-label::before { content:''; display:inline-block; width:7px; height:7px; background:var(--accent); animation:blink 1s infinite; }
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  .np-title   { font-family:'VT323'; font-size:18px; color:var(--accent); line-height:1.3; margin-bottom:3px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .np-channel { font-family:'VT323'; font-size:13px; color:var(--muted); margin-bottom:10px; }
+
+  /* ── VISUALIZER ── */
+  .visualizer { height:32px; display:flex; align-items:flex-end; gap:2px; padding:0 2px; margin-bottom:10px; }
+  .vbar { flex:1; background:var(--accent); min-height:3px; transition:height .1s; opacity:.75; }
+  .vbar:nth-child(even)  { background:var(--accent2); }
+  .vbar:nth-child(3n)    { background:var(--accent3); }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { margin-bottom:10px; }
+  .time-row { display:flex; justify-content:space-between; font-family:'VT323'; font-size:13px; color:var(--muted); margin-bottom:5px; }
+  .progress-track { width:100%; height:10px; background:var(--bg3); border:var(--px) solid var(--border); cursor:pointer; position:relative; }
+  .progress-fill  { height:100%; background:var(--accent); width:0%; position:relative; transition:width .5s linear; box-shadow:0 0 5px var(--accent); }
+  .progress-fill::after { content:''; position:absolute; right:-3px; top:0; width:6px; height:100%; background:#fff; }
+
+  /* ── CONTROLS ── */
+  .controls { display:flex; align-items:center; gap:7px; }
+  .ctrl-btn { font-family:'Press Start 2P'; font-size:9px; background:var(--bg3); color:var(--text); border:var(--px) solid var(--border); width:34px; height:34px; cursor:pointer; display:flex; align-items:center; justify-content:center; touch-action:manipulation; user-select:none; }
+  .ctrl-btn:active { border-color:var(--accent); color:var(--accent); transform:translate(1px,1px); }
+  .ctrl-btn.play-btn { width:42px; height:42px; border-color:var(--accent); color:var(--accent); font-size:12px; box-shadow:2px 2px 0 var(--accent); }
+  .ctrl-btn.play-btn:active { background:var(--accent); color:var(--bg); box-shadow:none; }
+  .vol-row { display:flex; align-items:center; gap:5px; flex:1; }
+  .vol-icon { font-family:'Press Start 2P'; font-size:7px; color:var(--muted); flex-shrink:0; }
+  input[type=range].vol-slider { flex:1; -webkit-appearance:none; height:7px; background:var(--bg3); border:var(--px) solid var(--border); outline:none; cursor:pointer; }
+  input[type=range].vol-slider::-webkit-slider-thumb { -webkit-appearance:none; width:11px; height:15px; background:var(--accent); border:none; }
+
+  /* ── RESULTS ── */
+  .results-section { padding:12px; display:none; }
+  .results-section.visible { display:block; }
+  .results-list { display:flex; flex-direction:column; gap:5px; max-height:240px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--accent) var(--bg3); }
+  .result-item { display:flex; gap:9px; padding:7px; background:var(--bg3); border:var(--px) solid var(--border); cursor:pointer; align-items:center; touch-action:manipulation; }
+  .result-item:active, .result-item.active { border-color:var(--accent2); background:rgba(255,0,170,.07); }
+  .result-thumb   { width:56px; height:42px; object-fit:cover; flex-shrink:0; border:1px solid var(--border); }
+  .result-info    { flex:1; overflow:hidden; }
+  .result-title   { font-family:'VT323'; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+  .result-channel { font-family:'VT323'; font-size:11px; color:var(--muted); }
+  .result-num     { font-size:7px; color:var(--muted); flex-shrink:0; padding:2px 5px; border:1px solid var(--border); }
+
+  /* ── STATUS ── */
+  .status-bar { display:flex; justify-content:space-between; align-items:center; padding:5px 10px; background:var(--bg3); border:var(--px) solid var(--border); margin-top:8px; }
+  .status-text { font-family:'VT323'; font-size:12px; color:var(--muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  .status-dot  { width:7px; height:7px; flex-shrink:0; background:var(--muted); margin-left:6px; }
+  .status-dot.on { background:var(--accent); box-shadow:0 0 5px var(--accent); animation:pulse 1.5s infinite; }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  ::-webkit-scrollbar { width:5px; }
+  ::-webkit-scrollbar-track { background:var(--bg3); }
+  ::-webkit-scrollbar-thumb { background:var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ── UNLOCK SCREEN (нужен для userActivation в Telegram) ── -->
+<div id="unlock-screen">
+  <div class="unlock-title">◆ PIXEL PLAYER ◆</div>
+  <div class="unlock-sub">Нажми чтобы включить звук</div>
+  <button class="unlock-btn" id="unlock-btn">▶ ЗАПУСТИТЬ</button>
+</div>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <div class="logo">◆ PIXEL PLAYER ◆</div>
+  <div class="sub">&gt; YOUTUBE EDITION &lt;</div>
+</div>
+
+<!-- ── API KEY ── -->
+<div class="pixel-box api-section">
+  <span class="sec-label">▸ YOUTUBE API KEY</span>
+  <div class="row">
+    <input class="pixel-input" type="password" id="api-key" placeholder="AIza...">
+    <button class="px-btn" onclick="saveKey()">SAVE</button>
+  </div>
+</div>
+
+<!-- ── SEARCH ── -->
+<div class="pixel-box search-section">
+  <span class="sec-label">▸ SEARCH TRACKS</span>
+  <div class="row">
+    <input class="pixel-input" type="text" id="search-q" placeholder="artist / track...">
+    <button class="px-btn p2" onclick="doSearch()">FIND</button>
+  </div>
+</div>
+
+<!-- ── YOUTUBE PLAYER (видимый iframe, встроен в дизайн) ── -->
+<div class="pixel-box yt-section" id="yt-section">
+  <span class="yt-label">▸ VIDEO FEED</span>
+  <div class="yt-frame-wrap">
+    <div id="yt-player"></div>
+    <div class="yt-overlay"></div>
+  </div>
+</div>
+
+<!-- ── NOW PLAYING ── -->
+<div class="pixel-box now-playing" id="now-playing">
+  <div class="np-label">NOW PLAYING</div>
+  <div class="np-title" id="np-title">—</div>
+  <div class="np-channel" id="np-channel">—</div>
+  <div class="visualizer" id="viz"></div>
+  <div class="progress-wrap">
+    <div class="time-row">
+      <span id="cur-time">0:00</span>
+      <span id="dur-time">0:00</span>
+    </div>
+    <div class="progress-track" onclick="seek(event)">
+      <div class="progress-fill" id="prog-fill"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="ctrl-btn" onclick="prevTrack()">◀◀</button>
+    <button class="ctrl-btn play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+    <button class="ctrl-btn" onclick="nextTrack()">▶▶</button>
+    <div class="vol-row">
+      <span class="vol-icon">♪</span>
+      <input type="range" class="vol-slider" id="vol" min="0" max="100" value="80" oninput="setVol(this.value)">
+    </div>
+  </div>
+</div>
+
+<!-- ── RESULTS ── -->
+<div class="pixel-box results-section" id="results-section">
+  <span class="sec-label">▸ RESULTS</span>
+  <div class="results-list" id="results-list"></div>
+</div>
+
+<!-- ── STATUS ── -->
+<div class="status-bar">
+  <span class="status-text" id="status-text">READY &gt; ENTER API KEY &amp; SEARCH</span>
+  <div class="status-dot" id="status-dot"></div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+// ── Telegram Web App ──
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0a0f'); tg.setBackgroundColor('#0a0a0f'); }
+
+// ── STATE ──
+let apiKey      = localStorage.getItem('yt_api_key') || '';
+let player      = null;
+let ytReady     = false;
+let unlocked    = false;
+let tracks      = [];
+let currentIdx  = -1;
+let isPlaying   = false;
+let pendingIdx  = null;
+let progressInterval = null;
+let vizInterval      = null;
+const vizBars        = [];
+
+// ── UNLOCK (userActivation trigger) ──
+// Telegram WebView блокирует autoplay без явного user gesture.
+// Показываем оверлей — пользователь нажимает кнопку → получаем userActivation.
+const unlockScreen = document.getElementById('unlock-screen');
+const unlockBtn    = document.getElementById('unlock-btn');
+
+// Показываем unlock только внутри Telegram
+if (tg) unlockScreen.classList.add('visible');
+else    unlocked = true; // в браузере сразу разрешено
+
+unlockBtn.addEventListener('click', () => {
+  unlocked = true;
+  unlockScreen.classList.remove('visible');
+
+  // Инициализируем плеер сразу после gesture — браузер запомнит разрешение
+  if (ytReady && player && typeof player.playVideo === 'function') {
+    // Тихий старт-стоп чтобы разблокировать аудиоконтекст
+    player.mute();
+    player.playVideo();
+    setTimeout(() => { player.stopVideo(); player.unMute(); setVol(document.getElementById('vol').value); }, 300);
+  }
+
+  // Если трек уже ждал — запускаем
+  if (pendingIdx !== null) {
+    const idx = pendingIdx; pendingIdx = null;
+    playTrack(idx);
+  }
+}, { once: true });
+
+// ── INIT ──
+if (apiKey) {
+  document.getElementById('api-key').value = apiKey;
+  setStatus('API KEY LOADED. READY TO SEARCH.');
+}
+
+// Visualizer bars
+const vizEl = document.getElementById('viz');
+for (let i = 0; i < 20; i++) {
+  const b = document.createElement('div');
+  b.className = 'vbar'; b.style.height = '3px';
+  vizEl.appendChild(b); vizBars.push(b);
+}
+
+document.getElementById('search-q').addEventListener('keydown', e => { if(e.key==='Enter') doSearch(); });
+document.getElementById('api-key').addEventListener('keydown', e => { if(e.key==='Enter') saveKey(); });
+
+// ── API KEY ──
+function saveKey() {
+  apiKey = document.getElementById('api-key').value.trim();
+  if (!apiKey) { setStatus('ERROR: NO API KEY ENTERED'); return; }
+  localStorage.setItem('yt_api_key', apiKey);
+  setStatus('API KEY SAVED. READY TO SEARCH.');
+}
+
+// ── SEARCH ──
+async function doSearch() {
+  if (!apiKey) { setStatus('ERROR: SET API KEY FIRST'); return; }
+  const q = document.getElementById('search-q').value.trim();
+  if (!q)      { setStatus('ERROR: ENTER SEARCH QUERY'); return; }
+  setStatus('SEARCHING...');
+  dot(true);
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=15&key=${apiKey}`;
+    const data = await fetch(url).then(r => r.json());
+    if (data.error) { setStatus('API ERROR: '+(data.error.message||'').substring(0,35)); dot(false); return; }
+    tracks = (data.items||[]).map(item => ({
+      id:      item.id.videoId,
+      title:   item.snippet.title,
+      channel: item.snippet.channelTitle,
+      thumb:   item.snippet.thumbnails?.medium?.url || ''
+    }));
+    renderResults();
+    setStatus(`FOUND ${tracks.length} TRACKS`);
+  } catch { setStatus('NETWORK ERROR'); }
+  dot(false);
+}
+
+// ── RESULTS ──
+function renderResults() {
+  document.getElementById('results-section').classList.add('visible');
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  tracks.forEach((t,i) => {
+    const el = document.createElement('div');
+    el.className = 'result-item' + (i===currentIdx?' active':'');
+    el.innerHTML = `
+      <span class="result-num">${String(i+1).padStart(2,'0')}</span>
+      <img class="result-thumb" src="${t.thumb}" onerror="this.style.display='none'" alt="">
+      <div class="result-info">
+        <div class="result-title">${esc(t.title)}</div>
+        <div class="result-channel">${esc(t.channel)}</div>
+      </div>`;
+    el.onclick = () => {
+      // Если ещё не разблокировано — показываем unlock и запоминаем трек
+      if (!unlocked) { pendingIdx = i; unlockScreen.classList.add('visible'); return; }
+      playTrack(i);
+    };
+    list.appendChild(el);
+  });
+}
+
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── YOUTUBE IFrame API ──
+function onYouTubeIframeAPIReady() {
+  ytReady = true;
+  player = new YT.Player('yt-player', {
+    width: '100%', height: '100%',
+    playerVars: { autoplay:0, controls:0, modestbranding:1, rel:0, playsinline:1, enablejsapi:1 },
+    events: { onReady: onPlayerReady, onStateChange: onPlayerState, onError: onPlayerError }
+  });
+}
+
+function onPlayerReady() {
+  setVol(document.getElementById('vol').value);
+}
+
+function onPlayerState(e) {
+  if (e.data === YT.PlayerState.PLAYING) {
+    isPlaying = true;
+    document.getElementById('play-btn').textContent = '▐▐';
+    startProgress(); startViz(); dot(true);
+    setStatus('PLAYING: ' + (tracks[currentIdx]?.title||'').substring(0,28));
+  } else if (e.data === YT.PlayerState.PAUSED) {
+    isPlaying = false;
+    document.getElementById('play-btn').textContent = '▶';
+    stopProgress(); stopViz(); dot(false);
+  } else if (e.data === YT.PlayerState.BUFFERING) {
+    setStatus('BUFFERING...');
+  } else if (e.data === YT.PlayerState.ENDED) {
+    nextTrack();
+  }
+}
+
+function onPlayerError(e) {
+  const msg = {2:'BAD ID',5:'HTML5 ERR',100:'NOT FOUND',101:'NO EMBED',150:'NO EMBED'}[e.data]||'ERR';
+  setStatus('SKIP: ' + msg); setTimeout(nextTrack, 1200);
+}
+
+// ── PLAY ──
+function playTrack(idx) {
+  if (idx < 0 || idx >= tracks.length) return;
+  currentIdx = idx;
+  const t = tracks[idx];
+
+  document.getElementById('yt-section').classList.add('visible');
+  document.getElementById('now-playing').classList.add('visible');
+  document.getElementById('np-title').textContent   = t.title;
+  document.getElementById('np-channel').textContent = t.channel;
+  document.querySelectorAll('.result-item').forEach((el,i) => el.classList.toggle('active', i===idx));
+
+  setStatus('LOADING...');
+
+  if (!ytReady || !player || typeof player.loadVideoById !== 'function') {
+    pendingIdx = idx; setStatus('PLAYER INIT... WAIT'); return;
+  }
+  player.loadVideoById(t.id);
+}
+
+function togglePlay() {
+  if (!player || typeof player.getPlayerState !== 'function') return;
+  player.getPlayerState() === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
+}
+function prevTrack() { playTrack(currentIdx > 0 ? currentIdx-1 : tracks.length-1); }
+function nextTrack() { playTrack(currentIdx < tracks.length-1 ? currentIdx+1 : 0); }
+function setVol(v)   { if(player && player.setVolume) player.setVolume(Number(v)); }
+
+function seek(e) {
+  if (!player || !player.getDuration) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  player.seekTo(((e.clientX-r.left)/r.width)*(player.getDuration()||0), true);
+}
+
+// ── PROGRESS ──
+function startProgress(){ stopProgress(); progressInterval=setInterval(updateProgress,500); }
+function stopProgress() { if(progressInterval) clearInterval(progressInterval); }
+function updateProgress(){
+  if(!player||!player.getCurrentTime) return;
+  const cur=player.getCurrentTime()||0, dur=player.getDuration()||0;
+  document.getElementById('prog-fill').style.width=(dur>0?cur/dur*100:0)+'%';
+  document.getElementById('cur-time').textContent=fmt(cur);
+  document.getElementById('dur-time').textContent=fmt(dur);
+}
+function fmt(s){ s=Math.floor(s); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+// ── VISUALIZER ──
+function startViz(){ stopViz(); vizInterval=setInterval(()=>vizBars.forEach(b=>b.style.height=(3+Math.random()*29)+'px'),130); }
+function stopViz() { if(vizInterval) clearInterval(vizInterval); vizBars.forEach(b=>b.style.height='3px'); }
+
+// ── HELPERS ──
+function dot(on){ document.getElementById('status-dot').classList.toggle('on',on); }
+function setStatus(msg){ document.getElementById('status-text').textContent=msg.toUpperCase().substring(0,50); }
+</script>
+</body>
+</html>
