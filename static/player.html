@@ -316,46 +316,12 @@ let tracks     = [], currentIdx = -1, isPlaying = false, pendingIdx = null;
 let progressInterval = null, vizInterval = null;
 const vizBars  = [];
 
-// ── FAVORITES (server API, синхронизация между устройствами) ──
-const TG_INIT_DATA = window.Telegram?.WebApp?.initData || '';
-const API_BASE = window.location.origin;
-let favsCache = null;
-
-function apiHeaders() {
-  return { 'Content-Type': 'application/json', 'X-Init-Data': TG_INIT_DATA };
-}
-async function loadFavs() {
-  if (favsCache !== null) return favsCache;
-  try {
-    const res = await fetch(API_BASE + '/api/favs', { headers: apiHeaders() });
-    favsCache = res.ok ? await res.json() : [];
-  } catch { favsCache = []; }
-  return favsCache;
-}
-async function isFav(id) {
-  const favs = await loadFavs();
-  return favs.some(f => f.id === id);
-}
-async function addFav(track) {
-  try {
-    const res = await fetch(API_BASE + '/api/favs', {
-      method: 'POST', headers: apiHeaders(), body: JSON.stringify(track)
-    });
-    if (!res.ok) { const t=await res.text(); console.error('addFav error:', res.status, t); setStatus('FAV ERROR: '+res.status); return false; }
-    favsCache = null;
-    return true;
-  } catch(e) { console.error('addFav fetch failed:', e); setStatus('FAV NETWORK ERROR'); return false; }
-}
-async function removeFav(id) {
-  try {
-    const res = await fetch(API_BASE + '/api/favs/' + encodeURIComponent(id), {
-      method: 'DELETE', headers: apiHeaders()
-    });
-    if (!res.ok) { console.error('removeFav error:', res.status); return false; }
-    favsCache = null;
-    return true;
-  } catch(e) { console.error('removeFav fetch failed:', e); return false; }
-}
+// ── FAVORITES (localStorage) ──
+function loadFavs()       { try { return JSON.parse(localStorage.getItem('dno_favs')||'[]'); } catch{ return []; } }
+function saveFavs(favs)   { localStorage.setItem('dno_favs', JSON.stringify(favs)); }
+function isFav(id)        { return loadFavs().some(f => f.id === id); }
+function addFav(track)    { const f=loadFavs(); if(!f.some(x=>x.id===track.id)){ f.unshift(track); saveFavs(f); } }
+function removeFav(id)    { saveFavs(loadFavs().filter(f=>f.id!==id)); }
 
 // ── SIDEBAR ──
 function openSidebar() {
@@ -454,11 +420,10 @@ function renderResults() {
 }
 
 // ── RENDER FAVORITES ──
-async function renderFavs() {
+function renderFavs() {
+  const favs  = loadFavs();
   const list  = document.getElementById('fav-list');
   const count = document.getElementById('fav-count');
-  list.innerHTML = '<div class="fav-empty">Загрузка...</div>';
-  const favs = await loadFavs();
   count.textContent = favs.length + (favs.length===1?' трек':favs.length>=2&&favs.length<=4?' трека':' треков');
   list.innerHTML = '';
   if (!favs.length) {
@@ -476,56 +441,47 @@ async function renderFavs() {
         <div class="result-channel">${esc(t.channel)}</div>
       </div>
       <button class="fav-remove" title="Удалить">♥</button>`;
-    const playIt = () => {
-      tracks = [...favs]; currentIdx = i;
+    // Клик по треку — играть
+    el.querySelector('.result-info').onclick = () => {
+      // Загружаем избранный трек во временный список
+      tracks = favs; currentIdx = i;
       showPage('player');
       if (!unlocked) { pendingIdx=i; unlockScreen.classList.add('visible'); return; }
       playTrack(i);
     };
-    el.querySelector('.result-info').onclick = playIt;
-    el.querySelector('.result-thumb').onclick = playIt;
-    el.querySelector('.fav-remove').onclick = async (e) => {
+    el.querySelector('.result-thumb').onclick = el.querySelector('.result-info').onclick;
+    // Кнопка удалить
+    el.querySelector('.fav-remove').onclick = (e) => {
       e.stopPropagation();
-      await removeFav(t.id);
-      await renderFavs();
-      await updateHeartBtn();
+      removeFav(t.id);
+      renderFavs();
+      updateHeartBtn();
     };
     list.appendChild(el);
   });
 }
 
 // ── HEART BUTTON ──
-async function updateHeartBtn() {
+function updateHeartBtn() {
   const btn = document.getElementById('heart-btn');
   if (!btn) return;
   const t = tracks[currentIdx];
-  const liked = t ? await isFav(t.id) : false;
-  btn.textContent = liked ? '♥' : '♡';
-  btn.classList.toggle('liked', liked);
+  if (t && isFav(t.id)) {
+    btn.textContent = '♥'; btn.classList.add('liked');
+  } else {
+    btn.textContent = '♡'; btn.classList.remove('liked');
+  }
 }
 
-async function toggleFav() {
+function toggleFav() {
   const t = tracks[currentIdx];
   if (!t) return;
-  // Проверяем что initData есть (работает только внутри Telegram)
-  if (!TG_INIT_DATA) {
-    setStatus('FAV: OPEN IN TELEGRAM TO SAVE');
-    return;
-  }
+  if (isFav(t.id)) { removeFav(t.id); } else { addFav(t); }
+  updateHeartBtn();
+  // Маленькая анимация
   const btn = document.getElementById('heart-btn');
-  btn.disabled = true; // блокируем двойные клики
   btn.style.transform = 'scale(1.4)';
   setTimeout(()=>btn.style.transform='', 200);
-  const alreadyFav = await isFav(t.id);
-  if (alreadyFav) {
-    await removeFav(t.id);
-    setStatus('REMOVED FROM FAVORITES');
-  } else {
-    await addFav(t);
-    setStatus('ADDED TO FAVORITES ♥');
-  }
-  await updateHeartBtn();
-  btn.disabled = false;
 }
 
 // ── YOUTUBE IFrame API ──
@@ -565,7 +521,7 @@ function playTrack(idx) {
   document.getElementById('np-title').textContent   = t.title;
   document.getElementById('np-channel').textContent = t.channel;
   document.querySelectorAll('.result-item').forEach((el,i)=>el.classList.toggle('active',i===idx));
-  updateHeartBtn(); // fire-and-forget async OK here
+  updateHeartBtn();
   setStatus('LOADING...');
   if (!ytReady||!player||typeof player.loadVideoById!=='function') { pendingIdx=idx; setStatus('PLAYER INIT... WAIT'); return; }
   player.loadVideoById(t.id);
