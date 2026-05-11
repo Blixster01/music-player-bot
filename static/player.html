@@ -316,12 +316,42 @@ let tracks     = [], currentIdx = -1, isPlaying = false, pendingIdx = null;
 let progressInterval = null, vizInterval = null;
 const vizBars  = [];
 
-// ── FAVORITES (localStorage) ──
-function loadFavs()       { try { return JSON.parse(localStorage.getItem('dno_favs')||'[]'); } catch{ return []; } }
-function saveFavs(favs)   { localStorage.setItem('dno_favs', JSON.stringify(favs)); }
-function isFav(id)        { return loadFavs().some(f => f.id === id); }
-function addFav(track)    { const f=loadFavs(); if(!f.some(x=>x.id===track.id)){ f.unshift(track); saveFavs(f); } }
-function removeFav(id)    { saveFavs(loadFavs().filter(f=>f.id!==id)); }
+// ── FAVORITES (server API, синхронизация между устройствами) ──
+const TG_INIT_DATA = tg?.initData || '';
+const API_BASE = window.location.origin;
+let favsCache = null;
+
+function apiHeaders() {
+  return { 'Content-Type': 'application/json', 'X-Init-Data': TG_INIT_DATA };
+}
+async function loadFavs() {
+  if (favsCache !== null) return favsCache;
+  try {
+    const res = await fetch(API_BASE + '/api/favs', { headers: apiHeaders() });
+    favsCache = res.ok ? await res.json() : [];
+  } catch { favsCache = []; }
+  return favsCache;
+}
+async function isFav(id) {
+  const favs = await loadFavs();
+  return favs.some(f => f.id === id);
+}
+async function addFav(track) {
+  try {
+    await fetch(API_BASE + '/api/favs', {
+      method: 'POST', headers: apiHeaders(), body: JSON.stringify(track)
+    });
+    favsCache = null;
+  } catch {}
+}
+async function removeFav(id) {
+  try {
+    await fetch(API_BASE + '/api/favs/' + encodeURIComponent(id), {
+      method: 'DELETE', headers: apiHeaders()
+    });
+    favsCache = null;
+  } catch {}
+}
 
 // ── SIDEBAR ──
 function openSidebar() {
@@ -420,10 +450,11 @@ function renderResults() {
 }
 
 // ── RENDER FAVORITES ──
-function renderFavs() {
-  const favs  = loadFavs();
+async function renderFavs() {
   const list  = document.getElementById('fav-list');
   const count = document.getElementById('fav-count');
+  list.innerHTML = '<div class="fav-empty">Загрузка...</div>';
+  const favs = await loadFavs();
   count.textContent = favs.length + (favs.length===1?' трек':favs.length>=2&&favs.length<=4?' трека':' треков');
   list.innerHTML = '';
   if (!favs.length) {
@@ -441,47 +472,42 @@ function renderFavs() {
         <div class="result-channel">${esc(t.channel)}</div>
       </div>
       <button class="fav-remove" title="Удалить">♥</button>`;
-    // Клик по треку — играть
-    el.querySelector('.result-info').onclick = () => {
-      // Загружаем избранный трек во временный список
-      tracks = favs; currentIdx = i;
+    const playIt = () => {
+      tracks = [...favs]; currentIdx = i;
       showPage('player');
       if (!unlocked) { pendingIdx=i; unlockScreen.classList.add('visible'); return; }
       playTrack(i);
     };
-    el.querySelector('.result-thumb').onclick = el.querySelector('.result-info').onclick;
-    // Кнопка удалить
-    el.querySelector('.fav-remove').onclick = (e) => {
+    el.querySelector('.result-info').onclick = playIt;
+    el.querySelector('.result-thumb').onclick = playIt;
+    el.querySelector('.fav-remove').onclick = async (e) => {
       e.stopPropagation();
-      removeFav(t.id);
-      renderFavs();
-      updateHeartBtn();
+      await removeFav(t.id);
+      await renderFavs();
+      await updateHeartBtn();
     };
     list.appendChild(el);
   });
 }
 
 // ── HEART BUTTON ──
-function updateHeartBtn() {
+async function updateHeartBtn() {
   const btn = document.getElementById('heart-btn');
   if (!btn) return;
   const t = tracks[currentIdx];
-  if (t && isFav(t.id)) {
-    btn.textContent = '♥'; btn.classList.add('liked');
-  } else {
-    btn.textContent = '♡'; btn.classList.remove('liked');
-  }
+  const liked = t ? await isFav(t.id) : false;
+  btn.textContent = liked ? '♥' : '♡';
+  btn.classList.toggle('liked', liked);
 }
 
-function toggleFav() {
+async function toggleFav() {
   const t = tracks[currentIdx];
   if (!t) return;
-  if (isFav(t.id)) { removeFav(t.id); } else { addFav(t); }
-  updateHeartBtn();
-  // Маленькая анимация
   const btn = document.getElementById('heart-btn');
   btn.style.transform = 'scale(1.4)';
   setTimeout(()=>btn.style.transform='', 200);
+  if (await isFav(t.id)) { await removeFav(t.id); } else { await addFav(t); }
+  await updateHeartBtn();
 }
 
 // ── YOUTUBE IFrame API ──
