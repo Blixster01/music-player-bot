@@ -317,7 +317,7 @@ let progressInterval = null, vizInterval = null;
 const vizBars  = [];
 
 // ── FAVORITES (server API, синхронизация между устройствами) ──
-const TG_INIT_DATA = tg?.initData || '';
+const TG_INIT_DATA = window.Telegram?.WebApp?.initData || '';
 const API_BASE = window.location.origin;
 let favsCache = null;
 
@@ -338,19 +338,23 @@ async function isFav(id) {
 }
 async function addFav(track) {
   try {
-    await fetch(API_BASE + '/api/favs', {
+    const res = await fetch(API_BASE + '/api/favs', {
       method: 'POST', headers: apiHeaders(), body: JSON.stringify(track)
     });
+    if (!res.ok) { const t=await res.text(); console.error('addFav error:', res.status, t); setStatus('FAV ERROR: '+res.status); return false; }
     favsCache = null;
-  } catch {}
+    return true;
+  } catch(e) { console.error('addFav fetch failed:', e); setStatus('FAV NETWORK ERROR'); return false; }
 }
 async function removeFav(id) {
   try {
-    await fetch(API_BASE + '/api/favs/' + encodeURIComponent(id), {
+    const res = await fetch(API_BASE + '/api/favs/' + encodeURIComponent(id), {
       method: 'DELETE', headers: apiHeaders()
     });
+    if (!res.ok) { console.error('removeFav error:', res.status); return false; }
     favsCache = null;
-  } catch {}
+    return true;
+  } catch(e) { console.error('removeFav fetch failed:', e); return false; }
 }
 
 // ── SIDEBAR ──
@@ -503,11 +507,25 @@ async function updateHeartBtn() {
 async function toggleFav() {
   const t = tracks[currentIdx];
   if (!t) return;
+  // Проверяем что initData есть (работает только внутри Telegram)
+  if (!TG_INIT_DATA) {
+    setStatus('FAV: OPEN IN TELEGRAM TO SAVE');
+    return;
+  }
   const btn = document.getElementById('heart-btn');
+  btn.disabled = true; // блокируем двойные клики
   btn.style.transform = 'scale(1.4)';
   setTimeout(()=>btn.style.transform='', 200);
-  if (await isFav(t.id)) { await removeFav(t.id); } else { await addFav(t); }
+  const alreadyFav = await isFav(t.id);
+  if (alreadyFav) {
+    await removeFav(t.id);
+    setStatus('REMOVED FROM FAVORITES');
+  } else {
+    await addFav(t);
+    setStatus('ADDED TO FAVORITES ♥');
+  }
   await updateHeartBtn();
+  btn.disabled = false;
 }
 
 // ── YOUTUBE IFrame API ──
@@ -547,7 +565,7 @@ function playTrack(idx) {
   document.getElementById('np-title').textContent   = t.title;
   document.getElementById('np-channel').textContent = t.channel;
   document.querySelectorAll('.result-item').forEach((el,i)=>el.classList.toggle('active',i===idx));
-  updateHeartBtn();
+  updateHeartBtn(); // fire-and-forget async OK here
   setStatus('LOADING...');
   if (!ytReady||!player||typeof player.loadVideoById!=='function') { pendingIdx=idx; setStatus('PLAYER INIT... WAIT'); return; }
   player.loadVideoById(t.id);
